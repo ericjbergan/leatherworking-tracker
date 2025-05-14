@@ -76,4 +76,7 @@ export const startServer = async () => {
     console.error('MongoDB connection error:', error);
     process.exit(1);
   }
-}; 
+};
+
+// Start the server
+startServer(); 

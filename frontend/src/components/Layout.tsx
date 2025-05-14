@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { styled } from '@mui/material/styles';
 import {
   Box,
@@ -45,6 +45,10 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
     }),
     marginLeft: 0,
   }),
+  [theme.breakpoints.down('sm')]: {
+    padding: theme.spacing(2),
+    marginLeft: 0,
+  },
 }));
 
 const AppBarStyled = styled(AppBar, {
@@ -64,6 +68,10 @@ const AppBarStyled = styled(AppBar, {
       duration: theme.transitions.duration.enteringScreen,
     }),
   }),
+  [theme.breakpoints.down('sm')]: {
+    width: '100%',
+    marginLeft: 0,
+  },
 }));
 
 const DrawerHeader = styled('div')(({ theme }) => ({
@@ -85,6 +93,11 @@ export default function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Update drawer state when screen size changes
+  useEffect(() => {
+    setOpen(!isMobile);
+  }, [isMobile]);
+
   const handleDrawerOpen = () => {
     setOpen(true);
   };
@@ -101,7 +114,7 @@ export default function Layout({ children }: LayoutProps) {
   ];
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <AppBarStyled position="fixed" open={open}>
         <Toolbar>
           <IconButton

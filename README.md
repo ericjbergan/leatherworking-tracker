@@ -5,12 +5,13 @@ A full-stack application for tracking leatherworking projects, orders, and inven
 ## Project Status
 
 ### Current Status
-- Frontend: ✅ Ready for deployment
-- Backend: ✅ Ready for deployment
+- Frontend: ✅ Ready and running
+- Backend: ✅ Ready and running
 - Database: ✅ Connected to MongoDB Atlas
 - AWS Deployment: ⚠️ Pending IAM user setup
   - Need to create IAM admin user for deployment
   - Root user access restricted for security
+- Development Environment: ✅ Containerized with VS Code Dev Containers
 
 ### Known Issues
 - AWS IAM user needed for EC2 instance deployment
@@ -22,46 +23,26 @@ A full-stack application for tracking leatherworking projects, orders, and inven
 - Node.js (v18 or higher)
 - MongoDB Atlas account
 - AWS account with IAM admin user (not root user)
+- Docker Desktop
+- VS Code with Dev Containers extension
 
-### AWS IAM Setup
-1. Create IAM Admin User:
-   - Log in to AWS Console as root user
-   - Go to IAM service
-   - Click "Users" > "Add user"
-   - Set user details:
-     - User name: `leatherworking-tracker-admin`
-     - Select both:
-       - "Access key - Programmatic access" (for CLI/API)
-       - "Password - AWS Management Console access" (for web console)
-   - Click "Next: Permissions"
+### Development Container Setup
+1. Install Docker Desktop
+2. Install VS Code Dev Containers extension
+3. Clone the repository
+4. Open the project in VS Code
+5. Click the green "><" icon in the bottom-left corner
+6. Select "Reopen in Container"
+7. Wait for the container to build and set up
 
-2. Set permissions:
-   - Choose "Attach existing policies directly"
-   - Search for and select `AdministratorAccess`
-   - Click "Next: Tags"
+The development container provides:
+- Consistent development environment
+- Pre-configured Node.js v18
+- Required VS Code extensions
+- Automatic port forwarding (3000 for backend, 5173 for frontend)
+- Isolated development environment
 
-3. Add tags (optional):
-   - Key: `Project`
-   - Value: `Leatherworking Tracker`
-   - Click "Next: Review"
-
-4. Review and create:
-   - Verify the details
-   - Click "Create user"
-
-5. Save credentials:
-   - Download the .csv file with access keys
-   - Save the Access key ID and Secret access key securely
-   - Note the console sign-in URL and password
-   - These will be needed for AWS CLI and console access
-
-6. Configure AWS CLI:
-   ```bash
-   aws configure
-   # Enter the new IAM user credentials when prompted
-   ```
-
-### Local Development
+### Local Development (Alternative to Dev Container)
 
 1. Clone the repository
 2. Install dependencies:
@@ -76,41 +57,61 @@ A full-stack application for tracking leatherworking projects, orders, and inven
    ```
 
 3. Set up environment variables:
-   - Backend: Create `.env` file in `backend` directory
+   - Backend: Create `.env` file in `backend` directory with:
+     ```
+     PORT=3000
+     MONGODB_URI=your_mongodb_connection_string
+     NODE_ENV=development
+     ```
    - Frontend: Create `.env` file in `frontend` directory
 
 4. Start development servers:
    ```bash
    # Start backend server
    cd backend
-   npm run dev
+   npm start
 
    # Start frontend server
    cd frontend
    npm run dev
    ```
 
-## Deployment
+## AWS Hosting Instructions
 
-### Backend (Elastic Beanstalk)
+### Prerequisites
+- AWS account already set up
+- AWS CLI installed and configured
+
+### Backend Deployment (Elastic Beanstalk)
 1. Build the application:
    ```bash
    cd backend
    npm run build
    ```
 
-2. Create deployment package:
+2. Create deployment bundle:
    ```bash
-   # Windows
-   powershell -ExecutionPolicy Bypass -File deploy.ps1
+   # On Windows (PowerShell)
+   Compress-Archive -Path dist/*, package.json, package-lock.json, .ebextensions/* -DestinationPath eb-bundle.zip -Force
+
+   # On Unix/Linux/Mac
+   zip -r eb-bundle.zip dist/* package.json package-lock.json .ebextensions/*
    ```
 
 3. Deploy to Elastic Beanstalk:
-   - Upload `leatherworking-tracker-backend.zip` to Elastic Beanstalk
-   - Configure environment variables
-   - Deploy application
+   - Go to AWS Elastic Beanstalk console
+   - Select your environment
+   - Click "Upload and deploy"
+   - Choose the `eb-bundle.zip` file
+   - Click "Deploy"
+   - Wait for deployment to complete
 
-### Frontend (S3 + CloudFront)
+4. Verify deployment:
+   - Check the Elastic Beanstalk environment health
+   - The health check should show "OK" status
+   - If health shows "No Data", check the logs for any issues
+
+### Frontend Deployment (S3 + CloudFront)
 1. Build the application:
    ```bash
    cd frontend
@@ -122,26 +123,21 @@ A full-stack application for tracking leatherworking projects, orders, and inven
    - Configure CloudFront distribution
    - Set up custom domain (optional)
 
+### Additional AWS Configuration
+- Ensure your AWS IAM user has the necessary permissions for Elastic Beanstalk and S3/CloudFront.
+- Configure environment variables in AWS Elastic Beanstalk for the backend.
+- Set up CORS if your frontend and backend are on different domains.
+
 ## Environment Variables
 
 ### Backend (.env)
 ```
-MONGODB_URI=your_mongodb_uri
 PORT=3000
+MONGODB_URI=your_mongodb_connection_string
 NODE_ENV=development
 ```
 
 ### Frontend (.env)
 ```
-VITE_API_URL=http://localhost:3000/api
+VITE_API_URL=http://localhost:3000
 ```
-
-## Contributing
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## License
-This project is licensed under the MIT License. 

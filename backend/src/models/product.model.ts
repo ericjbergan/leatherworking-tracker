@@ -1,4 +1,4 @@
-import { Document, Schema, model } from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 
 interface IMaterialItem {
   materialId: Schema.Types.ObjectId;
@@ -11,10 +11,13 @@ interface IImage {
   uploadedAt: Date;
 }
 
-interface IProduct extends Document {
+export interface IProduct extends Document {
   name: string;
   description?: string;
   price: number;
+  category?: string;
+  stock: number;
+  imageUrl?: string;
   materials?: IMaterialItem[];
   images: IImage[];
   createdAt: Date;
@@ -33,13 +36,38 @@ const ImageSchema = new Schema({
 });
 
 const ProductSchema = new Schema({
-  name: { type: String, required: true },
-  description: { type: String },
-  price: { type: Number, required: true, min: 0 },
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  description: {
+    type: String,
+    trim: true
+  },
+  price: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  category: {
+    type: String,
+    trim: true
+  },
+  stock: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  imageUrl: {
+    type: String
+  },
   materials: [MaterialItemSchema],
   images: [ImageSchema],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
+}, {
+  timestamps: true
 });
 
 ProductSchema.pre('save', function(next) {
@@ -47,4 +75,4 @@ ProductSchema.pre('save', function(next) {
   next();
 });
 
-export const Product = model<IProduct>('Product', ProductSchema); 
+export const Product = mongoose.model<IProduct>('Product', ProductSchema); 

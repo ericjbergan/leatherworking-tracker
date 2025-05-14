@@ -1,61 +1,62 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, RequestHandler } from 'express';
 import { Order } from '../models/order.model';
 import { Product } from '../models/product.model';
-import { body, validationResult } from 'express-validator';
-import { TypedRequestBody, TypedRequestParams } from '../types/express';
+import { body, param, validationResult } from 'express-validator';
 
 const router = express.Router();
 
 // Validation middleware
 const validateOrder = [
-  body('customerId').isMongoId().withMessage('Valid customer ID is required'),
+  body('customerId').isMongoId().withMessage('Invalid customer ID'),
   body('items').isArray().withMessage('Items must be an array'),
-  body('items.*.productId').isMongoId().withMessage('Valid product ID is required'),
+  body('items.*.productId').isMongoId().withMessage('Invalid product ID'),
   body('items.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
-  body('status').isIn(['Pending', 'Processing', 'Completed', 'Cancelled']).withMessage('Invalid status'),
   body('totalAmount').isFloat({ min: 0 }).withMessage('Total amount must be a positive number'),
-  body('notes').optional().isString().trim(),
+  body('status').isIn(['Pending', 'Processing', 'Completed', 'Cancelled']).withMessage('Invalid status'),
+  body('notes').optional().isString().withMessage('Notes must be a string')
+];
+
+const validateOrderUpdate = [
+  param('id').isMongoId().withMessage('Invalid order ID'),
+  body('customerId').optional().isMongoId().withMessage('Invalid customer ID'),
+  body('items').optional().isArray().withMessage('Items must be an array'),
+  body('items.*.productId').optional().isMongoId().withMessage('Invalid product ID'),
+  body('items.*.quantity').optional().isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
+  body('totalAmount').optional().isFloat({ min: 0 }).withMessage('Total amount must be a positive number'),
+  body('status').optional().isIn(['Pending', 'Processing', 'Completed', 'Cancelled']).withMessage('Invalid status'),
+  body('notes').optional().isString().withMessage('Notes must be a string')
 ];
 
 // Get all orders
-router.get('/', async (req: Request, res: Response) => {
+const getAllOrders: RequestHandler = async (req, res) => {
   try {
-    const orders = await Order.find()
-      .sort({ createdAt: -1 });
+    const orders = await Order.find().populate('customerId');
     res.json(orders);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching orders' });
+    res.status(500).json({ error: 'Failed to fetch orders' });
   }
-});
+};
 
-// Get single order
-router.get('/:id', async (req: TypedRequestParams<{ id: string }>, res: Response) => {
+// Get a single order
+const getOrder: RequestHandler = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id);
-    
+    const order = await Order.findById(req.params.id).populate('customerId');
     if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+      res.status(404).json({ error: 'Order not found' });
+      return;
     }
     res.json(order);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching order' });
+    res.status(500).json({ error: 'Failed to fetch order' });
   }
-});
+};
 
-// Create order
-router.post('/', validateOrder, async (req: TypedRequestBody<{
-  customerId: string;
-  items: Array<{
-    productId: string;
-    quantity: number;
-  }>;
-  status: 'Pending' | 'Processing' | 'Completed' | 'Cancelled';
-  totalAmount: number;
-  notes?: string;
-}>, res: Response) => {
+// Create a new order
+const createOrder: RequestHandler = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+    res.status(400).json({ errors: errors.array() });
+    return;
   }
 
   try {
@@ -63,24 +64,16 @@ router.post('/', validateOrder, async (req: TypedRequestBody<{
     await order.save();
     res.status(201).json(order);
   } catch (error) {
-    res.status(500).json({ message: 'Error creating order' });
+    res.status(500).json({ error: 'Failed to create order' });
   }
-});
+};
 
-// Update order
-router.put('/:id', validateOrder, async (req: TypedRequestParams<{ id: string }> & TypedRequestBody<{
-  customerId: string;
-  items: Array<{
-    productId: string;
-    quantity: number;
-  }>;
-  status: 'Pending' | 'Processing' | 'Completed' | 'Cancelled';
-  totalAmount: number;
-  notes?: string;
-}>, res: Response) => {
+// Update an order
+const updateOrder: RequestHandler = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+    res.status(400).json({ errors: errors.array() });
+    return;
   }
 
   try {
@@ -89,54 +82,63 @@ router.put('/:id', validateOrder, async (req: TypedRequestParams<{ id: string }>
       req.body,
       { new: true, runValidators: true }
     );
-
     if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+      res.status(404).json({ error: 'Order not found' });
+      return;
     }
     res.json(order);
   } catch (error) {
-    res.status(500).json({ message: 'Error updating order' });
+    res.status(500).json({ error: 'Failed to update order' });
   }
-});
+};
 
 // Update order status
-router.patch('/:id/status', [
-  body('status').isIn(['Pending', 'Processing', 'Completed', 'Cancelled']).withMessage('Invalid status')
-], async (req: TypedRequestParams<{ id: string }> & TypedRequestBody<{
-  status: 'Pending' | 'Processing' | 'Completed' | 'Cancelled';
-}>, res: Response) => {
+const updateOrderStatus: RequestHandler = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+    res.status(400).json({ errors: errors.array() });
+    return;
   }
 
   try {
     const order = await Order.findByIdAndUpdate(
       req.params.id,
       { status: req.body.status },
-      { new: true }
+      { new: true, runValidators: true }
     );
-
     if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+      res.status(404).json({ error: 'Order not found' });
+      return;
     }
     res.json(order);
   } catch (error) {
-    res.status(500).json({ message: 'Error updating order status' });
+    res.status(500).json({ error: 'Failed to update order status' });
   }
-});
+};
 
-// Delete order
-router.delete('/:id', async (req: TypedRequestParams<{ id: string }>, res: Response) => {
+// Delete an order
+const deleteOrder: RequestHandler = async (req, res) => {
   try {
     const order = await Order.findByIdAndDelete(req.params.id);
     if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+      res.status(404).json({ error: 'Order not found' });
+      return;
     }
-    res.json({ message: 'Order deleted successfully' });
+    res.status(204).send();
   } catch (error) {
-    res.status(500).json({ message: 'Error deleting order' });
+    res.status(500).json({ error: 'Failed to delete order' });
   }
-});
+};
+
+// Route definitions
+router.get('/', getAllOrders);
+router.get('/:id', getOrder);
+router.post('/', validateOrder, createOrder);
+router.put('/:id', validateOrderUpdate, updateOrder);
+router.patch('/:id/status', [
+  param('id').isMongoId().withMessage('Invalid order ID'),
+  body('status').isIn(['Pending', 'Processing', 'Completed', 'Cancelled']).withMessage('Invalid status')
+], updateOrderStatus);
+router.delete('/:id', deleteOrder);
 
 export const orderRoutes = router; 

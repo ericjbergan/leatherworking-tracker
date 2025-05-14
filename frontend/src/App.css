@@ -3,6 +3,16 @@
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Responsive container */
+@media (max-width: 600px) {
+  #root {
+    padding: 1rem;
+    width: 100%;
+  }
 }
 
 .logo {
@@ -11,6 +21,15 @@
   will-change: filter;
   transition: filter 300ms;
 }
+
+/* Responsive logo */
+@media (max-width: 600px) {
+  .logo {
+    height: 4em;
+    padding: 1em;
+  }
+}
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
@@ -35,8 +54,28 @@
 
 .card {
   padding: 2em;
+  margin: 1em;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive card */
+@media (max-width: 600px) {
+  .card {
+    padding: 1em;
+    margin: 0.5em;
+  }
 }
 
 .read-the-docs {
   color: #888;
+}
+
+/* Ensure proper spacing on mobile */
+@media (max-width: 600px) {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 }

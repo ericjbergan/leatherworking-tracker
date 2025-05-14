@@ -28,11 +28,19 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 h1 {
   font-size: 3.2em;
   line-height: 1.1;
+}
+
+/* Responsive typography */
+@media (max-width: 600px) {
+  h1 {
+    font-size: 2.2em;
+  }
 }
 
 button {
@@ -45,6 +53,7 @@ button {
   background-color: #1a1a1a;
   cursor: pointer;
   transition: border-color 0.25s;
+  -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
 }
 button:hover {
   border-color: #646cff;
@@ -52,6 +61,14 @@ button:hover {
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
+}
+
+/* Mobile-specific styles */
+@media (max-width: 600px) {
+  button {
+    padding: 0.5em 1em;
+    font-size: 0.9em;
+  }
 }
 
 @media (prefers-color-scheme: light) {
@@ -64,5 +81,27 @@ button:focus-visible {
   }
   button {
     background-color: #f9f9f9;
+  }
+}
+
+/* Prevent text size adjustment on orientation change */
+html {
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+}
+
+/* Improve touch targets on mobile */
+@media (max-width: 600px) {
+  a, button, input, select, textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 600px) {
+  body {
+    display: block;
+    min-width: 100%;
   }
 }

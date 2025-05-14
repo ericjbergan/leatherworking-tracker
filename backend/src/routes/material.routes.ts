@@ -1,7 +1,6 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, RequestHandler } from 'express';
 import { Material } from '../models/material.model';
 import { body, validationResult } from 'express-validator';
-import { TypedRequestBody, TypedRequestParams } from '../types/express';
 
 const router = express.Router();
 
@@ -17,17 +16,17 @@ const validateMaterial = [
 ];
 
 // Get all materials
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', (async (req: Request, res: Response) => {
   try {
     const materials = await Material.find().sort({ name: 1 });
     res.json(materials);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching materials' });
   }
-});
+}) as RequestHandler);
 
 // Get single material
-router.get('/:id', async (req: TypedRequestParams<{ id: string }>, res: Response) => {
+router.get('/:id', (async (req: Request, res: Response) => {
   try {
     const material = await Material.findById(req.params.id);
     if (!material) {
@@ -37,18 +36,10 @@ router.get('/:id', async (req: TypedRequestParams<{ id: string }>, res: Response
   } catch (error) {
     res.status(500).json({ message: 'Error fetching material' });
   }
-});
+}) as RequestHandler);
 
 // Create material
-router.post('/', validateMaterial, async (req: TypedRequestBody<{
-  name: string;
-  type: string;
-  quantity: number;
-  unit: string;
-  price: number;
-  supplier?: string;
-  notes?: string;
-}>, res: Response) => {
+router.post('/', validateMaterial, (async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
@@ -61,18 +52,10 @@ router.post('/', validateMaterial, async (req: TypedRequestBody<{
   } catch (error) {
     res.status(500).json({ message: 'Error creating material' });
   }
-});
+}) as RequestHandler);
 
 // Update material
-router.put('/:id', validateMaterial, async (req: TypedRequestParams<{ id: string }> & TypedRequestBody<{
-  name: string;
-  type: string;
-  quantity: number;
-  unit: string;
-  price: number;
-  supplier?: string;
-  notes?: string;
-}>, res: Response) => {
+router.put('/:id', validateMaterial, (async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
@@ -92,10 +75,10 @@ router.put('/:id', validateMaterial, async (req: TypedRequestParams<{ id: string
   } catch (error) {
     res.status(500).json({ message: 'Error updating material' });
   }
-});
+}) as RequestHandler);
 
 // Delete material
-router.delete('/:id', async (req: TypedRequestParams<{ id: string }>, res: Response) => {
+router.delete('/:id', (async (req: Request, res: Response) => {
   try {
     const material = await Material.findByIdAndDelete(req.params.id);
     if (!material) {
@@ -105,6 +88,6 @@ router.delete('/:id', async (req: TypedRequestParams<{ id: string }>, res: Respo
   } catch (error) {
     res.status(500).json({ message: 'Error deleting material' });
   }
-});
+}) as RequestHandler);
 
 export const materialRoutes = router; 

@@ -11,7 +11,16 @@ function loadEnv() {
     console.log('Raw .env contents:', envFile);
     
     const envVars = envFile.split('\n').reduce((acc, line) => {
-      const [key, value] = line.split('=').map(part => part.trim());
+      // Skip empty lines
+      if (!line.trim()) return acc;
+      
+      // Find the first equals sign
+      const equalsIndex = line.indexOf('=');
+      if (equalsIndex === -1) return acc;
+      
+      const key = line.substring(0, equalsIndex).trim();
+      const value = line.substring(equalsIndex + 1).trim();
+      
       if (key && value) {
         acc[key] = value;
       }
@@ -29,14 +38,18 @@ function loadEnv() {
 // Load environment variables
 const envVars = loadEnv();
 
-// Hardcoded configuration
+// Configuration with environment variables
 export const config = {
-  port: 3000,
-  mongodbUri: 'mongodb+srv://ericjbergan:%24Patches1@cluster0.8jssa8i.mongodb.net/leatherworking-tracker?retryWrites=true&w=majority&appName=Cluster0',
-  nodeEnv: 'development'
+  port: parseInt(envVars.PORT || '3000', 10),
+  mongodbUri: envVars.MONGODB_URI || 'mongodb://localhost:27017/leatherworking-tracker',
+  nodeEnv: envVars.NODE_ENV || 'development'
 };
 
-// No need to validate since we're hardcoding the values
+// Validate configuration
+if (!config.mongodbUri) {
+  throw new Error('MONGODB_URI environment variable is required');
+}
+
 console.log('Using configuration:', {
   port: config.port,
   mongodbUri: '***',

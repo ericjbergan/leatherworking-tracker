@@ -1,153 +1,133 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, RequestHandler } from 'express';
 import { Project } from '../models/project.model';
-import { body, validationResult } from 'express-validator';
+import { body, param, validationResult } from 'express-validator';
 import { TypedRequestBody, TypedRequestParams } from '../types/express';
 
 const router = express.Router();
 
 // Validation middleware
 const validateProject = [
-  body('name').isString().trim().notEmpty().withMessage('Name is required'),
-  body('description').optional().isString().trim(),
+  body('name').notEmpty().withMessage('Name is required'),
   body('status').isIn(['Planning', 'In Progress', 'Completed', 'On Hold']).withMessage('Invalid status'),
-  body('materials').optional().isArray(),
-  body('materials.*.materialId').isMongoId().withMessage('Valid material ID is required'),
-  body('materials.*.quantity').isFloat({ min: 0 }).withMessage('Quantity must be a positive number'),
-  body('estimatedCompletionDate').optional().isISO8601().toDate(),
-  body('notes').optional().isString().trim(),
+  body('materials').optional().isArray().withMessage('Materials must be an array'),
+  body('materials.*.materialId').optional().isMongoId().withMessage('Invalid material ID'),
+  body('materials.*.quantity').optional().isInt({ min: 0 }).withMessage('Quantity must be a non-negative integer'),
+  body('estimatedCompletionDate').optional().isISO8601().withMessage('Invalid date format'),
+  body('notes').optional().isString().withMessage('Notes must be a string')
 ];
 
 // Get all projects
-router.get('/', async (req: Request, res: Response) => {
+const getAllProjects: RequestHandler = async (req, res) => {
   try {
-    const projects = await Project.find()
-      .populate('materials.materialId')
-      .sort({ createdAt: -1 });
+    const projects = await Project.find().populate('materials.materialId');
     res.json(projects);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching projects' });
+    res.status(500).json({ error: 'Failed to fetch projects' });
   }
-});
+};
 
-// Get single project
-router.get('/:id', async (req: TypedRequestParams<{ id: string }>, res: Response) => {
+// Get a single project
+const getProject: RequestHandler = async (req, res) => {
   try {
-    const project = await Project.findById(req.params.id)
-      .populate('materials.materialId');
+    const project = await Project.findById(req.params.id).populate('materials.materialId');
     if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
+      res.status(404).json({ error: 'Project not found' });
+      return;
     }
     res.json(project);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching project' });
+    res.status(500).json({ error: 'Failed to fetch project' });
   }
-});
+};
 
-// Create project
-router.post('/', validateProject, async (req: TypedRequestBody<{
-  name: string;
-  description?: string;
-  status: 'Planning' | 'In Progress' | 'Completed' | 'On Hold';
-  materials?: Array<{
-    materialId: string;
-    quantity: number;
-  }>;
-  estimatedCompletionDate?: Date;
-  notes?: string;
-}>, res: Response) => {
+// Create a new project
+const createProject: RequestHandler = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+    res.status(400).json({ errors: errors.array() });
+    return;
   }
 
   try {
-    const project = new Project({
-      ...req.body,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    });
+    const project = new Project(req.body);
     await project.save();
     res.status(201).json(project);
   } catch (error) {
-    res.status(500).json({ message: 'Error creating project' });
+    res.status(500).json({ error: 'Failed to create project' });
   }
-});
+};
 
-// Update project
-router.put('/:id', validateProject, async (req: TypedRequestParams<{ id: string }> & TypedRequestBody<{
-  name: string;
-  description?: string;
-  status: 'Planning' | 'In Progress' | 'Completed' | 'On Hold';
-  materials?: Array<{
-    materialId: string;
-    quantity: number;
-  }>;
-  estimatedCompletionDate?: Date;
-  notes?: string;
-}>, res: Response) => {
+// Update a project
+const updateProject: RequestHandler = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+    res.status(400).json({ errors: errors.array() });
+    return;
   }
 
   try {
     const project = await Project.findByIdAndUpdate(
       req.params.id,
-      { ...req.body, updatedAt: new Date() },
+      req.body,
       { new: true, runValidators: true }
-    ).populate('materials.materialId');
-
+    );
     if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
+      res.status(404).json({ error: 'Project not found' });
+      return;
     }
     res.json(project);
   } catch (error) {
-    res.status(500).json({ message: 'Error updating project' });
+    res.status(500).json({ error: 'Failed to update project' });
   }
-});
+};
 
 // Update project status
-router.patch('/:id/status', async (req: TypedRequestParams<{ id: string }> & TypedRequestBody<{
-  status: 'Planning' | 'In Progress' | 'Completed' | 'On Hold';
-}>, res: Response) => {
-  const { status } = req.body;
-  const validStatuses = ['Planning', 'In Progress', 'Completed', 'On Hold'];
-
-  if (!validStatuses.includes(status)) {
-    return res.status(400).json({ message: 'Invalid status' });
+const updateProjectStatus: RequestHandler = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    res.status(400).json({ errors: errors.array() });
+    return;
   }
 
   try {
     const project = await Project.findByIdAndUpdate(
       req.params.id,
-      { 
-        status,
-        updatedAt: new Date(),
-        ...(status === 'Completed' ? { actualCompletionDate: new Date() } : {})
-      },
-      { new: true }
-    ).populate('materials.materialId');
-
+      { status: req.body.status },
+      { new: true, runValidators: true }
+    );
     if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
+      res.status(404).json({ error: 'Project not found' });
+      return;
     }
     res.json(project);
   } catch (error) {
-    res.status(500).json({ message: 'Error updating project status' });
+    res.status(500).json({ error: 'Failed to update project status' });
   }
-});
+};
 
-// Delete project
-router.delete('/:id', async (req: TypedRequestParams<{ id: string }>, res: Response) => {
+// Delete a project
+const deleteProject: RequestHandler = async (req, res) => {
   try {
     const project = await Project.findByIdAndDelete(req.params.id);
     if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
+      res.status(404).json({ error: 'Project not found' });
+      return;
     }
-    res.json({ message: 'Project deleted successfully' });
+    res.status(204).send();
   } catch (error) {
-    res.status(500).json({ message: 'Error deleting project' });
+    res.status(500).json({ error: 'Failed to delete project' });
   }
-});
+};
+
+// Route definitions
+router.get('/', getAllProjects);
+router.get('/:id', getProject);
+router.post('/', validateProject, createProject);
+router.put('/:id', validateProject, updateProject);
+router.patch('/:id/status', [
+  param('id').isMongoId().withMessage('Invalid project ID'),
+  body('status').isIn(['Planning', 'In Progress', 'Completed', 'On Hold']).withMessage('Invalid status')
+], updateProjectStatus);
+router.delete('/:id', deleteProject);
 
 export const projectRoutes = router; 
